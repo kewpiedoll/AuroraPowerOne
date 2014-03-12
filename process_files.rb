@@ -1,64 +1,107 @@
+# A module to store constants relating to electrical production and CO2 emission analysis
 module Constants
-  CO2_USGRID = 592.5 # g CO2 per kWh source: carbonfund.org (ca. 2012)
-  ENERGY_USGRID = 4143 # TWh energy, US eletrical grid, 2012 (wiki)
+	# g CO2 emitted per kWh produced. (Source: carbonfund.org (ca. 2012))
+  CO2_USGRID = 592.5
+  # TWh energy, US eletrical grid, 2012 (Source: Wiki)
+  ENERGY_USGRID = 4143
+  # A hash that stores 6 common types of renewable energy generation as the keys and service lifecycle carbon emissions
+  # per kWh generated as the values (source: Wiki)
   ENERGY_TYPES = {
   	PV_Solar: 46, 
   	Thermal_Solar: 22, 
   	Onshore_Wind: 12,
   	Geothermal: 45,
   	Hydroelectric: 4,
-  	Biomass: 18, 	# can vary
+  	Biomass: 18, 	
   	 }
 end
 
-# addition of these two methods to class string credited to Renee's thanksgiving_dinner.rb answer
+# String class: adds two methods
+#
+# Author: Renee Hendrickson 
+# Credit: thanksgiving_dinner.rb answer key
+#
 class String
+	# A method that upcases the first letter of each word
 	def titlecase
 		self.gsub(/\b\w/){|f| f.upcase}
 	end
+
+	# A method to replace underscores in variable names with spaces for human reading
 	def humanize
 		self.gsub('_',' ').titlecase
 	end
 end
 
+# This class processes energy and power files unique to the Aurora Power-One inverter.
+#
+# Author: Chris Ashfield
+# License: MIT
+# 
+# More info about the Aurora device can be found here: 
+# http://www.power-one.com/renewable-energy/products/solar/string-inverters/aurora-uno-single-phase/pvi-30363842-north-america/series
+# 
 class ProcessFiles
 	include Constants
 
+  # Total energy output in Wh
 	attr_reader :energy_amount
+	# Total inverter operating time represented by file
 	attr_reader :energy_run_time
+	# an array containing both files inputted on the command line
 	attr_reader :filename
+	# Maximum power (in W) recorded in the power file
 	attr_reader :max_power
+	# Minimum power (in W) recorded in the power file
 	attr_reader :min_power
+	# Average power (W) calculated by dividing energy by runtime (energy file used only)
 	attr_reader :ave_power
+	# The differential carbon impact of utilizing a renewable energy system versus the 
+	# average of the entire US electrical grid
 	attr_reader :carbon_savings
+	# The specific type of renewable energy system. Defaults to PV Solar.
 	attr_reader :system_type
-	attr_reader :carbon_savings
-
+  
+  # The initialization method takes two arguments that were entered on the command line. 
+  # There must be exactly one energy file and one power file. They can be named anything 
+  # (note: without spaces) and be entered in any order.
+  #
+  # === Attributes
+  #
+  # * +filename1+ The first file read from the command line arguments
+  # * +filename2+ The second file read from the command line arguments
+  #
 	def initialize filename1, filename2
 		@filename = [filename1, filename2]
-		p @filename
+		# boolean vasriables to help track which file is read first
 		@parsed_energy = false
 		@parsed_power = false
+		# keeps track of the number of files read in
 		@file_count = 0
 	end
 
-  # can't close the file (??)
+  # A helper method to read in the file and map it to an array of strings
+  #
   def read_file
   	@readin = []
     file = File.open(@filename[@file_count], 'r') 
-    #self do |line|
-	    @readin = file.each.to_a
-    #end
+	  @readin = file.each.to_a
+	  # chop off the escaped characters (in this case: \r\n)
     @readin.map! {|s| s.chomp}
+    # increment the file count
     @file_count += 1
     file.close
+    # determine which file was read in
+    # the files either have a "W" (for power) or "Wh" as the first line
   	if @readin[0] =~ /Wh/
   		parse_energy
   	else @readin[0] =~ /W/
   		parse_power
   	end
   end
-
+  
+  # A helper method to map the values (now in an array from either file type) to a hash
+  #
   def parse_hash 
   	hash = {}
   	# Remove the first five lines of the file
@@ -75,7 +118,10 @@ class ProcessFiles
   	end
   	return hash
   end
-
+  
+  # A method to parse the data originally from the energy file and calculate the amount of time
+  # that past respresented by the data and total energy outputted (and assign them to variables)
+  #
   def parse_energy
   	energy_hash = parse_hash
   	# total energy produced
@@ -86,12 +132,15 @@ class ProcessFiles
   	# energy in Wh
   	@energy_amount = (temp_array[temp_array.length - 1][1] - temp_array[0][1])
   	
-  	# if it parsed energy before power, do power now
+  	# if the program parsed energy before power, do power now
   	@parsed_energy = true
   	read_file unless @parsed_power
   	output_report
   end
 
+  # A method to parse the data originally from the power file and find the maximum power
+  # reading, minimum power reading, and assign them to class variables
+  #
   def parse_power
   	power_hash = parse_hash
   	@max_power = power_hash.values.max
@@ -99,8 +148,16 @@ class ProcessFiles
   	@parsed_power = true
   	read_file unless @parsed_energy
   end
-
+  
+  # A method to output a human readable report summarizing the data captured in the energy and power files.
+  #
+  # This method is called after the energy and power files have been parsed and the desired values
+  # calculated and comitted to variables.
+  #
   def output_report
+  	# Have user indicate the type of renewable energy system that generated the file
+  	# The Aurora is type-agnostic: it only reports power and energy regardless of the type.
+  	#
   	puts "Enter the number for the type of renewable production system?\n"
   	puts "1.\tPV Solar\n"
   	puts "2.\tThermal Solar\n"
@@ -108,6 +165,7 @@ class ProcessFiles
   	puts "4.\tGeothermal\n"
   	puts "5.\tHydroelectric\n"
   	puts "6.\tBiomass\n"
+  	print "Your Choice: "
   	warning = ""
 		input = STDIN.gets.chomp
 		case input.to_i
@@ -127,7 +185,6 @@ class ProcessFiles
 	  	warning = "Invalid energy type give. Default is "
 	  	@system_type = :PV_Solar
 		end
-		p input
 		@carbon_savings = (@energy_amount / 1000.0) * (CO2_USGRID - ENERGY_TYPES[@system_type])
 		@ave_power = (@energy_amount / @energy_run_time).round(2)
 		# Write a new output file. Note that this overwrites any existing file.
@@ -144,6 +201,9 @@ class ProcessFiles
     output_file.write("Your energy production resulted in #{@carbon_savings.to_i} g net " \
     	"CO2 Productivity-Sequestration\n")
     output_file.close
+    if File.exists?("Energy Report") 
+    	puts "Report generated successfully!"
+    end
   end
 
 end

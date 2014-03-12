@@ -1,5 +1,7 @@
 require "#{File.dirname(__FILE__)}/process_files"
 
+# NOTE: all tests pass if "1" is always chosen
+
 describe ProcessFiles do
 	before do
 		@e_instance = ProcessFiles.new("energy.cht", "power.cht")
@@ -31,8 +33,7 @@ describe ProcessFiles do
   	end
 
     it "should output a file named 'Energy Report'" do
-    	File.exists?("#{File.dirname(__FILE__)}/Energy Report") 
-    	# note: this test never fails even if the name is wrong (??)
+    	File.exists?("#{File.dirname(__FILE__)}/Energy Report").should eq true
     end
 
     it "should report total sequestered carbon" do

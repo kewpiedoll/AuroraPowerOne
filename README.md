@@ -4,7 +4,7 @@ This program currently takes two text files that are produced by the Aurora Powe
 
 Full rdoc documentation can be found here: github.com/kewpiedoll/AuroraPowerOne/lib/doc/index.html
 
-To generate a file:
+To generate a file (NOTE: THIS IS ONLY IF YOU ACTUALLY HAVE THE INVERTER. FOR GENERIC TESTING, SEE FUTHER BELOW)
 - Overview here: http://www.power-one.com/renewable-energy/insights/technical-corner-how-communica
 - I was able to connect through a USB, though it took awhile to get it set up between the Aurora software and and few sets of drviers. Find the online manual and follow the directions CAREFULLY. Their real-person support was helpful, as info.
 - Once data is logging right click on the Power graph and select "Export Chart." Do the same for Energy. The files can have any name though they will be loaded through the command line so no spaces is best.

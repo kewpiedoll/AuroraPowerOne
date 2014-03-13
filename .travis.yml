@@ -3,3 +3,7 @@ rvm:
   - 1.9.2
   - 1.9.3
   - 2.0.0
+
+  install: gem install rspec
+
+  script: rspec spec/process_files.spec.rb 

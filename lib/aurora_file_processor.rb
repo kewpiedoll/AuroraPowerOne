@@ -1,5 +1,37 @@
 # A module to store constants relating to electrical production and CO2 emission analysis
 require 'erb'
+TEXT_TEMPLATE = <<-TEXT
+ENERGY REPORT
+Energy System Type: <%= warning %> <%= @system_type.to_s.humanize %>
+Total Operating Time: <%= @energy_run_time %> hours
+Total Energy Produced: <%= @energy_amount %> Wh
+Your Power Range was <%= @min_power %> to <%= @max_power %> W.
+Your Average Power was: <%= @ave_power %> W
+
+Carbon Productivity-Sequestration: <%= @system_type.to_s.humanize %> Rating: <%= ENERGY_TYPES[@system_type] %> g CO2 per kWh
+US Average: <%= CO2_USGRID %> g CO2 per kWh
+Your energy production resulted in <%= @carbon_savings.to_i %> g net CO2 Productivity-Sequestration
+TEXT
+
+HTML_TEMPLATE = <<-HTML
+<html>
+<body>
+<h1> Energy Report </h1>
+<ul>
+  <li> Energy System Type: <%= warning %> <%= @system_type.to_s.humanize %> </li>
+  <li> Total Operating Time: <%= @energy_run_time %> hours </li>
+  <li> Total Energy Produced: <%= @energy_amount %> Wh </li>
+  <li> Your Power Range was <%= @min_power %> to <%= @max_power %> W. </li>
+  <li> Your Average Power was: <%= @ave_power %> W </li>
+</ul>
+<ul>
+  <li> Carbon Productivity-Sequestration: <%= @system_type.to_s.humanize %> Rating: <%= ENERGY_TYPES[@system_type] %> g CO2 per kWh </li>
+  <li> US Average: <%= CO2_USGRID %> g CO2 per kWh </li>
+  <li> Your energy production resulted in <%= @carbon_savings.to_i %> g net CO2 Productivity-Sequestration </li>
+</ul>
+</body>
+<html>
+HTML
 
 module Constants
 	# g CO2 emitted per kWh produced. (Source: carbonfund.org (ca. 2012))
@@ -151,20 +183,8 @@ class AuroraFileProcessor
   	read_file unless @parsed_energy
   end
 
-	def create_text_report warning=''
-		text_template = <<-TEXT
-ENERGY REPORT
-Energy System Type: #{warning} #{@system_type.to_s.humanize}
-Total Operating Time: #{@energy_run_time} hours
-Total Energy Produced: #{@energy_amount} Wh
-Your Power Range was #{@min_power} to #{@max_power} W.
-Your Average Power was: #{@ave_power} W
-
-Carbon Productivity-Sequestration: #{@system_type.to_s.humanize} Rating: #{ENERGY_TYPES[@system_type]} g CO2 per kWh
-US Average: #{CO2_USGRID} g CO2 per kWh
-Your energy production resulted in #{@carbon_savings.to_i} g net CO2 Productivity-Sequestration
-		TEXT
-		template = ERB.new text_template
+	def create_text_report warning='', template
+		template = ERB.new template
 		template.result(binding)
 	end
   # A method to output a human readable report summarizing the data captured in the energy and power files.
@@ -206,11 +226,15 @@ Your energy production resulted in #{@carbon_savings.to_i} g net CO2 Productivit
 		@carbon_savings = (@energy_amount / 1000.0) * (CO2_USGRID - ENERGY_TYPES[@system_type])
 		@ave_power = (@energy_amount / @energy_run_time).round(2)
 		# Write a new output file. Note that this overwrites any existing file.
-  	output_file = File.open("Energy Report", 'w+')
-  	output_file.write("ENERGY REPORT\n")
-        text = create_text_report warning
+        output_file = File.open("Energy Report.txt", 'w+')
+        text = create_text_report warning, TEXT_TEMPLATE
         output_file.write text
-    output_file.close
+        output_file.close
+
+        output_file = File.open("Energy Report.html", 'w+')
+        html = create_text_report warning, HTML_TEMPLATE
+        output_file.write html
+        output_file.close
     if File.exists?("Energy Report")
     	puts "Report generated successfully!"
     end

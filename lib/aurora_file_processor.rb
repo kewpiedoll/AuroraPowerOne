@@ -235,9 +235,7 @@ class AuroraFileProcessor
         html = create_text_report warning, HTML_TEMPLATE
         output_file.write html
         output_file.close
-    if File.exists?("Energy Report")
-    	puts "Report generated successfully!"
-    end
+        puts "Created files: \"Engergy Report.txt\" and \"Engergy Report.html\""
   end
 
 end

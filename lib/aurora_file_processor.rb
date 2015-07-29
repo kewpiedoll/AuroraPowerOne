@@ -1,4 +1,38 @@
 # A module to store constants relating to electrical production and CO2 emission analysis
+require 'erb'
+TEXT_TEMPLATE = <<-TEXT
+ENERGY REPORT
+Energy System Type: <%= warning %> <%= @system_type.to_s.humanize %>
+Total Operating Time: <%= @energy_run_time %> hours
+Total Energy Produced: <%= @energy_amount %> Wh
+Your Power Range was <%= @min_power %> to <%= @max_power %> W.
+Your Average Power was: <%= @ave_power %> W
+
+Carbon Productivity-Sequestration: <%= @system_type.to_s.humanize %> Rating: <%= ENERGY_TYPES[@system_type] %> g CO2 per kWh
+US Average: <%= CO2_USGRID %> g CO2 per kWh
+Your energy production resulted in <%= @carbon_savings.to_i %> g net CO2 Productivity-Sequestration
+TEXT
+
+HTML_TEMPLATE = <<-HTML
+<html>
+<body>
+<h1> Energy Report </h1>
+<ul>
+  <li> Energy System Type: <%= warning %> <%= @system_type.to_s.humanize %> </li>
+  <li> Total Operating Time: <%= @energy_run_time %> hours </li>
+  <li> Total Energy Produced: <%= @energy_amount %> Wh </li>
+  <li> Your Power Range was <%= @min_power %> to <%= @max_power %> W. </li>
+  <li> Your Average Power was: <%= @ave_power %> W </li>
+</ul>
+<ul>
+  <li> Carbon Productivity-Sequestration: <%= @system_type.to_s.humanize %> Rating: <%= ENERGY_TYPES[@system_type] %> g CO2 per kWh </li>
+  <li> US Average: <%= CO2_USGRID %> g CO2 per kWh </li>
+  <li> Your energy production resulted in <%= @carbon_savings.to_i %> g net CO2 Productivity-Sequestration </li>
+</ul>
+</body>
+<html>
+HTML
+
 module Constants
 	# g CO2 emitted per kWh produced. (Source: carbonfund.org (ca. 2012))
   CO2_USGRID = 592.5
@@ -7,18 +41,18 @@ module Constants
   # A hash that stores 6 common types of renewable energy generation as the keys and service lifecycle carbon emissions
   # per kWh generated as the values (source: Wiki)
   ENERGY_TYPES = {
-  	PV_Solar: 46, 
-  	Thermal_Solar: 22, 
+  	PV_Solar: 46,
+  	Thermal_Solar: 22,
   	Onshore_Wind: 12,
   	Geothermal: 45,
   	Hydroelectric: 4,
-  	Biomass: 18, 	
+  	Biomass: 18,
   	 }
 end
 
 # String class: adds two methods
 #
-# Author: Renee Hendrickson 
+# Author: Renee Hendrickson
 # Credit: thanksgiving_dinner.rb answer key
 #
 class String
@@ -37,10 +71,10 @@ end
 #
 # Author: Chris Ashfield
 # License: MIT
-# 
-# More info about the Aurora device can be found here: 
+#
+# More info about the Aurora device can be found here:
 # http://www.power-one.com/renewable-energy/products/solar/string-inverters/aurora-uno-single-phase/pvi-30363842-north-america/series
-# 
+#
 class AuroraFileProcessor
 	include Constants
 
@@ -56,14 +90,14 @@ class AuroraFileProcessor
 	attr_reader :min_power
 	# Average power (W) calculated by dividing energy by runtime (energy file used only)
 	attr_reader :ave_power
-	# The differential carbon impact of utilizing a renewable energy system versus the 
+	# The differential carbon impact of utilizing a renewable energy system versus the
 	# average of the entire US electrical grid
 	attr_reader :carbon_savings
 	# The specific type of renewable energy system. Defaults to PV Solar.
 	attr_reader :system_type
-  
-  # The initialization method takes two arguments that were entered on the command line. 
-  # There must be exactly one energy file and one power file. They can be named anything 
+
+  # The initialization method takes two arguments that were entered on the command line.
+  # There must be exactly one energy file and one power file. They can be named anything
   # (note: without spaces) and be entered in any order.
   #
   # === Attributes
@@ -84,7 +118,7 @@ class AuroraFileProcessor
   #
   def read_file
   	@readin = []
-    file = File.open(@filename[@file_count], 'r') 
+    file = File.open(@filename[@file_count], 'r')
 	  @readin = file.each.to_a
 	  # chop off the escaped characters (in this case: \r\n)
     @readin.map! {|s| s.chomp}
@@ -99,14 +133,14 @@ class AuroraFileProcessor
   		parse_power
   	end
   end
-  
+
   # A helper method to map the values (now in an array from either file type) to a hash
   #
-  def parse_hash 
+  def parse_hash
   	hash = {}
   	# Remove the first five lines of the file
   	temp_array = @readin[5, @readin.length]
-  	# Split the input at the semicolon: the left hand side is a timestamp and the right hand side 
+  	# Split the input at the semicolon: the left hand side is a timestamp and the right hand side
   	# is the value (either power in W, or energy in Wh depending on the file type).
   	# This is committed to a hash with time as the key and the W/Wh as the value.
   	temp_array.each do |s|
@@ -118,7 +152,7 @@ class AuroraFileProcessor
   	end
   	return hash
   end
-  
+
   # A method to parse the data originally from the energy file and calculate the amount of time
   # that past respresented by the data and total energy outputted (and assign them to variables)
   #
@@ -131,7 +165,7 @@ class AuroraFileProcessor
   	@energy_run_time = (temp_array[temp_array.length - 1][0] - temp_array[0][0])/3600.0
   	# energy in Wh
   	@energy_amount = (temp_array[temp_array.length - 1][1] - temp_array[0][1])
-  	
+
   	# if the program parsed energy before power, do power now
   	@parsed_energy = true
   	read_file unless @parsed_power
@@ -148,7 +182,11 @@ class AuroraFileProcessor
   	@parsed_power = true
   	read_file unless @parsed_energy
   end
-  
+
+	def create_text_report warning='', template
+		template = ERB.new template
+		template.result(binding)
+	end
   # A method to output a human readable report summarizing the data captured in the energy and power files.
   #
   # This method is called after the energy and power files have been parsed and the desired values
@@ -188,22 +226,16 @@ class AuroraFileProcessor
 		@carbon_savings = (@energy_amount / 1000.0) * (CO2_USGRID - ENERGY_TYPES[@system_type])
 		@ave_power = (@energy_amount / @energy_run_time).round(2)
 		# Write a new output file. Note that this overwrites any existing file.
-  	output_file = File.open("Energy Report", 'w+') 
-  	output_file.write("ENERGY REPORT\n")
-  	output_file.write("Energy System Type: #{warning} #{@system_type.to_s.humanize}\n\n")
-  	output_file.write("Total Operating Time: #{@energy_run_time} hours\n")
-    output_file.write("Total Energy Produced: #{@energy_amount} Wh\n")
-    output_file.write("Your Power Range was #{@min_power} to #{@max_power} W.\n")
-    output_file.write("Your Average Power was: #{@ave_power} W\n\n")
-    output_file.write("Carbon Productivity-Sequestration:\n")
-    output_file.write("#{@system_type.to_s.humanize} Rating: #{ENERGY_TYPES[@system_type]} g CO2 per kWh\n")
-    output_file.write("US Average: #{CO2_USGRID} g CO2 per kWh\n")
-    output_file.write("Your energy production resulted in #{@carbon_savings.to_i} g net " \
-    	"CO2 Productivity-Sequestration\n")
-    output_file.close
-    if File.exists?("Energy Report") 
-    	puts "Report generated successfully!"
-    end
+        output_file = File.open("Energy Report.txt", 'w+')
+        text = create_text_report warning, TEXT_TEMPLATE
+        output_file.write text
+        output_file.close
+
+        output_file = File.open("Energy Report.html", 'w+')
+        html = create_text_report warning, HTML_TEMPLATE
+        output_file.write html
+        output_file.close
+        puts "Created files: \"Engergy Report.txt\" and \"Engergy Report.html\""
   end
 
 end
